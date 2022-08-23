@@ -1,2 +1,7 @@
 # personal_study
-this is a project that used to learn git workflow and store the source code of C++ and C.
+用于总结个人学习的一些资料
+
+
+
+# [git的使用](Note/mdNote/git.md)
+
