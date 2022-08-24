@@ -98,3 +98,36 @@ git rebase <branch> # 将当前分支rebase到branch分支当中
 
 
 ## 场景5 各个阶段的撤回操作
+
+1. 修改了内容，还未提交到暂存区，恢复到上一次commit的代码
+
+   ````shell
+   git restore <file>
+   ````
+
+2. 修改了内容, 提交到暂存区
+
+   ````shell
+   git restore --staged <file> # 将文件从暂存区移除，如果想要复原，执行操作1
+   ````
+
+3. 已经提交了commit
+
+   ````shell
+   git reset --soft HEAD^|<commit版本号>
+   
+   撤销我们的commit
+   --mixed 
+   意思是：不删除工作空间改动代码，撤销commit，并且撤销git add . 操作
+   这个为默认参数,git reset --mixed HEAD^ 和 git reset HEAD^ 效果是一样的。
+   --soft  
+   不删除工作空间改动代码，撤销commit，不撤销git add . 
+   --hard
+   删除工作空间改动代码，撤销commit，撤销git add . 
+   注意完成这个操作后，就恢复到了上一次的commit状态。
+   HEAD^的意思是上一个版本，也可以写成HEAD~1
+   如果你进行了2次commit，想都撤回，可以使用HEAD~2
+   
+   ````
+
+   

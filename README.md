@@ -5,3 +5,23 @@
 
 # [git的使用](Note/mdNote/git.md)
 
+
+
+# [GDB的使用](Note/mdNote/gdb.md)
+
+
+
+# [makefile的使用](Note/mdNote/makefile.md)
+
+
+
+# [camke的用法](Note/mdNote/cmake.md)
+
+
+
+# [计算机网络](Note/mdNote/computer_net.md)
+
+
+
+# [操作系统](Note/mdNote/operating_system.md)
+
