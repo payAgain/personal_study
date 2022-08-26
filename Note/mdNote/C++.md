@@ -953,6 +953,8 @@ https://cloud.tencent.com/developer/article/1543336
 
 ### TODO 移动语义
 
+### TODO 完美转发
+
 ## 11.c++中四种变量存储类型总结
 
 在C++语言中，变量的存储类共有如下四种：
@@ -1035,3 +1037,544 @@ this指针会因编译器不同而有不同的放置位置。可能是栈，也�
 ### 如果在类的析构函数中调用delete this，会发生什么？
 
 会导致堆栈溢出。原因很简单，delete的本质是“为将被释放的内存调用一个或多个析构函数，然后，释放内存”。显然，delete this会去调用本对象的析构函数，而析构函数中又调用delete this，形成无限递归，造成堆栈溢出，系统崩溃。
+
+## 13. explicit 关键字
+
+explicit关键字主要是用来修饰类中的构造函数的，对于**仅有一个参数**或**除第一个参数外其余参数均有默认值的类构造函数**，尽可能使用explicit关键字修饰。因为只有一个参数或者出了第一个参数其他参数是默认参数的构造函数来说，他还有另一个名字叫做转换构造函数。
+
+**所以explicit主要用来防止隐式转换。**因为仅含一个参数的构造函数和除了第一个参数外其余参数都有默认值的多参构造函数承担了两个角色。 第一个是成为带参数的构造函数，第二个是一个默认且隐含的类型转换操作符（就是单参数的构造函数是一种隐含的类型转换符）
+
+额外说一下隐式类型转换：
+
+> c++隐式类型转换是指c++自动将一种类型转换成另一种类型，是编译器的一种自主行为。
+
+举一些类型转换的例子：
+
+```cpp
+class Test{
+public:
+    int a;
+    float c;
+    Test(int num) : a(num), c(0) {}    
+    Test(float fnum, int inum = 10) : a(inum), c(fnum) {} 
+};
+
+int main()
+{
+    // 隐式类型转换
+    Test t1 = 10;
+    Test t2 = 20.0f;
+    std::cout << t1.a << ' ' << t1.c << std::endl;
+    std::cout << t2.a << ' ' << t2.c << std::endl;
+
+}
+// 当我们添加explicit关键字时 会报下面的错误
+explicit.cpp:7:14: note: explicit constructor is not a candidate
+    explicit Test(int num) : a(num), c(0) {}    
+             ^
+explicit.cpp:8:14: note: explicit constructor is not a candidate
+    explicit Test(float fnum, int inum = 10) : a(inum), c(fnum) {} 
+```
+
+## 14.友元类和友元函数
+
+友元的作用是提高了程序的运行效率（即减少了类型检查和安全性检查等都需要时间开销），但它破坏了类的封装性和隐藏性，使得非成员函数可以访问类的私有成员。
+
+- ### 友元函数 
+
+  ​       友元函数是可以直接访问类的私有成员的非成员函数。它是定义在类外的普通函数，它不属于任何类，但需要在类的定义中加以声明，声明时只需在友元的名称前加上关键字friend，其格式如下：
+  ​       friend 类型 函数名(形式参数);
+
+       友元函数的声明可以放在类的私有部分，也可以放在公有部分，它们是没有区别的，都说明是该类的一个友元函数。
+       一个函数可以是多个类的友元函数，只需要在各个类中分别声明。
+       友元函数的调用与一般函数的调用方式和原理一致。
+- ### **友元类 ：**
+
+  ​       友元类的所有成员函数都是另一个类的友元函数，都可以访问另一个类中的隐藏信息（包括私有成员和保护成员)，我们也可以只对类的成员函数进行声明。
+
+使用友元的一个例子
+
+````cpp
+class A {
+    std::string name;
+    int age;
+public: 
+    // 重载左移运算符 这里必须要使用引用
+    // 如果不使用引用，在传递值的时候会调用复制构造函数
+    // ostream是不允许进行复制
+    friend std::ostream& operator<<(std::ostream &cout, A a);
+    friend bool operator < (const A& a, const A& b);
+    A(std::string name, int age) : name(name), age(age){}
+};
+
+std::ostream& operator<<(std::ostream &out, A a) {
+    out << "Name: " << a.name << "  age: " << a.age << std::endl;
+    return out;
+}
+
+bool operator < (const A& a, const A& b) {
+    return a.age < b.age;
+}
+
+int main()
+{
+    std::vector<A> a;
+    a.push_back(A("张三", 19));
+    a.push_back(A("李四", 17));
+    std::sort(a.begin(), a.end());
+    for (auto &item : a) {
+        std::cout << item;
+    } 
+}
+````
+
+## 15.虚函数
+
+派生类的指针指向基类对象的地址（派生类对象的地址赋给基类指针）称为向上转型，c++允许隐式向上转型。将子类指向父类，向下转换则必须强制类型转换。
+
+然后我们就可以用父类的指针指向其子类的对象，然后通过父类的指针调用实际子类的成员函数。如果子类重写了该成员函数就会调用子类的成员函数，没有声明重写就调用基类的成员函数。这种技术可以让父类的指针有“多种形态”。
+
+### [类大小的计算](https://blog.csdn.net/fengxinlinux/article/details/72836199)
+
+````cpp
+#include <iostream>
+
+// #pragma pack(1) 对齐规则对clss同样生效
+
+/*
+首先，类大小的计算遵循结构体的对齐原则
+类的大小与普通数据成员有关，与成员函数和静态成员无关。即普通成员函数，静态成员函数，静态数据成员，静态常量数据成员均对类的大小无影响
+虚函数对类的大小有影响，是因为虚函数表指针带来的影响
+虚继承对类的大小有影响，是因为虚基表指针带来的影响
+空类的大小是一个特殊情况,空类的大小为1
+*/
+
+class Empty {};
+class EmptyArray {
+    int a[0];
+};
+class A {
+    int a;
+    char b; // C++也存在内存对齐
+    double c;
+    void func() {} // 不占内存空间
+};
+class VA {
+    // 多个虚函数只占用8个字节 也就是64位指针的大小 虚表指针
+    virtual void a_func_0() {};
+    virtual void a_func_1() {};
+};
+class VB {
+    virtual void b_func_0() {};
+    virtual void b_func_1() {};
+};
+// 单继承继承一个续表指针
+class SingleC : VA {
+};
+// 多继承继承所有的虚表指针
+class MultipleC : VA, VB {
+};
+// 继承者的虚函数表使用的第一个继承的父类
+class MultipleC_newV : VA, VB {
+    virtual void func_local() {}
+};
+int main()
+{
+    std::cout << sizeof (Empty) << std::endl;
+    std::cout << sizeof (EmptyArray) << '\n';
+    std::cout << sizeof (A) << '\n';
+    std::cout << sizeof (VA) << '\n';
+    std::cout << sizeof (SingleC) << '\n';
+    std::cout << sizeof (MultipleC) << '\n';
+    std::cout << sizeof (MultipleC_newV) << '\n';
+}
+➜  virtual_function git:(master) ✗ g++ class_size.cpp
+➜  virtual_function git:(master) ✗ ./a.out           
+1
+0
+16
+8
+8
+16
+````
+
+### 虚函数工作原理
+
+c++没有强制规定虚函数的实现方式。**编译器中主要用虚表指针（vptr）和虚函数表（vtbl）来实现的**
+
+先直接上图，然后再看一下虚函数的执行过程：
+
+[![img](assets/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f6c756f676f752f636c6f7564696d672f646174612f3230323230313231313633383035372e706e67.png)](https://camo.githubusercontent.com/2cadebf6e2f6f3ec3069fcab2b235ac07e6b66d7e446bd79539a3acec89f2c29/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f6c756f676f752f636c6f7564696d672f646174612f3230323230313231313633383035372e706e67)
+
+当调用一个对象对应的函数时，通过对象内存中的vptr找到一个虚函数表（注意这虚函数表既不在堆上，也不再栈上）。虚函数表内部是一个函数指针数组，记录的是该类各个虚函数的首地址。然后调用对象所拥有的函数。
+
+### 继承情况下的虚函数表
+
+- 原始基类的虚函数表
+
+  ![img](assets/68747470733a2f2f696d61676573323031352e636e626c6f67732e636f6d2f626c6f672f3336343330332f3230313630382f3336343330332d32303136303831353132333935363533312d3339373739333630392e706e67.png)
+
+- 单继承时的虚函数（**无重写基类虚函数**）
+
+  ![img](assets/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f6c756f676f752f636c6f7564696d672f646174612f3336343330332d32303136303831353132343431393135362d3138393039363233312e706e67.png)
+
+- 单继承时的虚函数（**重写基类虚函数**）
+
+  ![img](assets/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f6c756f676f752f636c6f7564696d672f646174612f3336343330332d32303136303831353132343631353536322d3432303930363036342e706e67.png)
+
+- 多重继承时的虚函数（Derived ::public Base1,public Base2）
+
+  ![img](assets/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f6c756f676f752f636c6f7564696d672f646174612f3336343330332d32303136303831353132353133393932312d313432323638333331352e706e67.png)
+
+这样就会有内存和执行速度方面的成本：
+
+1. 每个对象都会增大，因为在对象最前面的位置加入了指针
+2. 对于每个类，编译器都会创建虚函数地址表
+3. 对于每个函数调用，都要查找表中地址
+
+### 虚函数的性能分析
+
+第一步是通过对象的vptr找到该类的vtbl，因为虚函数表指针是编译器加上去的，通过vptr找到vtbl就是指针的寻址而已。
+
+第二部就是找到对应vtbl中虚函数的指针，因为vtbl大部分是**指针数组**的形式实现的
+
+在单继承的情况下调用虚函数所需的代价基本上和非虚函数效率一样，在大多数计算机上它多执行了很少的一些指令
+
+在多继承的情况由于会根据多个父类生成多个vptr，在对象里为寻找 vptr 而进行的偏移量计算会变得复杂一些
+
+空间层面为了实现运行时多态机制，编译器会给每一个包含虚函数或继承了虚函数的类自动建立一个虚函数表，所以虚函数的一个代价就是会增加类的体积。在虚函数接口较少的类中这个代价并不明显，虚函数表vtbl的体积相当于几个函数指针的体积，如果你有大量的类或者在每个类中有大量的虚函数,你会发现 vtbl 会占用大量的地址空间。但这并不是最主要的代价，主要的代价是发生在类的继承过程中，在上面的分析中，可以看到，当子类继承父类的虚函数时，子类会有自己的vtbl，如果子类只覆盖父类的一两个虚函数接口，子类vtbl的其余部分内容会与父类重复。**如果存在大量的子类继承，且重写父类的虚函数接口只占总数的一小部分的情况下，会造成大量地址空间浪费**。同时由于虚函数指针vptr的存在，虚函数也会增加该类的每个对象的体积。在单继承或没有继承的情况下，类的每个对象只会多一个vptr指针的体积，也就是4个字节；在多继承的情况下，类的每个对象会多N个（N＝包含虚函数的父类个数）vptr的体积，也就是4N个字节。当一个类的对象体积较大时，这个代价不是很明显，但当一个类的对象很轻量的时候，如成员变量只有4个字节，那么再加上4（或4N）个字节的vptr，对象的体积相当于翻了1（或N）倍，这个代价是非常大的。
+
+### [深入理解虚函数](https://cloud.tencent.com/developer/article/1599283)
+
+[博客](http://www.008ct.top/blog/2020/01/03/%E5%8D%95%E7%BB%A7%E6%89%BF%E3%80%81%E5%A4%9A%E7%BB%A7%E6%89%BF%E3%80%81%E8%8F%B1%E5%BD%A2%E7%BB%A7%E6%89%BF%E7%9A%84%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8/)
+
+#### 1. vptr在哪？
+
+vptr是每个对象指向虚函数表的指针，他的位置位于对象的首地址上。
+
+````cpp
+class A{
+public:
+	int x;
+	virtual void b() {}
+};
+int main()
+{
+	A* p = new A;
+	cout << p << endl;
+	cout << &p->x << endl;
+	return 0;
+}
+输出结果
+0x129f05a30
+0x129f05a38
+````
+
+#### 2.虚函数表是什么样的
+
+````cpp
+class Base {
+public:
+	virtual void a() { cout << "Base a()" << endl; }
+	virtual void b() { cout << "Base b()" << endl; }
+	virtual void c() { cout << "Base c()" << endl; }
+};
+
+class Derive : public Base {
+public:
+	virtual void b() { cout << "Derive b()" << endl; }
+};
+
+int main()
+{
+	cout << "-----------Base------------" << endl;
+	Base* q = new Base;
+	long* tmp1 = (long*)q;
+	long* vptr1 = (long*)(*tmp1); // 将真实的虚函数表地址转换成指针
+	for (int i = 0; i < 3; i++) {
+		printf("vptr[%d] : %p\n", i, vptr1[i]); // vptr1[i]指向的地址就是虚函数代码段的地址
+	}
+
+	Derive* p = new Derive;
+	long* tmp = (long*)p;
+	long* vptr = (long*)(*tmp);
+	cout << "---------Derive------------" << endl;
+	for (int i = 0; i < 3; i++) {
+		printf("vptr[%d] : %p\n", i, vptr[i]);
+	}
+	return 0;
+}
+// 输出结果
+-----------Base------------
+vptr[0] : 0x104d32f3c
+vptr[1] : 0x104d32f78 // 只有被重载的地方是不一样的
+vptr[2] : 0x104d32fb4
+---------Derive------------
+vptr[0] : 0x104d32f3c
+vptr[1] : 0x104d33034
+vptr[2] : 0x104d32fb4
+````
+
+#### 3.调用虚函数验证
+
+````cpp
+class Base1 {
+public:
+	virtual void A() { cout << "Base1 A()" << endl; }
+	virtual void B() { cout << "Base1 B()" << endl; }
+	virtual void C() { cout << "Base1 C()" << endl; }
+};
+
+class Base2 {
+public:
+	virtual void D() { cout << "Base2 D()" << endl; }
+	virtual void E() { cout << "Base2 E()" << endl; }
+};
+
+class Derive : public Base1, public Base2{
+public:
+	virtual void A() { cout << "Derive A()" << endl; }           // 覆盖Base1::A()
+	virtual void D() { cout << "Derive D()" << endl; }           // 覆盖Base2::D()
+	virtual void MyA() { cout << "Derive MyA()" << endl; }
+};
+
+int main()
+{
+	typedef void (*Func)();
+	Derive d;
+	Base1 &b1 = d;
+	Base2 &b2 = d;
+	cout << "Derive对象所占的内存大小为：" << sizeof(d) << endl;
+	
+	cout << "\n---------第一个虚函数表-------------" << endl;
+	long* tmp1 = (long *)&d;              // 获取第一个虚函数表的指针
+	long* vptr1 = (long*)(*tmp1);         // 获取虚函数表
+
+	Func x1 = (Func)vptr1[0];
+	Func x2 = (Func)vptr1[1];
+	Func x3 = (Func)vptr1[2];
+	Func x4 = (Func)vptr1[3];
+	x1();x2();x3();x4();
+
+	cout << "\n---------第二个虚函数表-------------" << endl;
+	long* tmp2 = tmp1 + 1;               // 获取第二个虚函数表指针 相当于跳过4个字节
+	long* vptr2 = (long*)(*tmp2);
+
+	Func y1 = (Func)vptr2[0];
+	Func y2 = (Func)vptr2[1];
+	y1(); y2();
+
+	return 0;
+}
+// 输出结果
+Derive对象所占的内存大小为：16
+
+---------第一个虚函数表-------------
+Derive A()
+Base1 B()
+Base1 C()
+Derive D()
+
+---------第二个虚函数表-------------
+Derive D()
+Base2 E()
+````
+
+#### 4.多继承时的虚函数表
+
+````cpp
+#include <iostream>
+#include <stdio.h>
+using namespace std;
+
+class Base1 {
+public:
+	virtual void A() { cout << "Base1 A()" << endl; }
+	virtual void B() { cout << "Base1 B()" << endl; }
+	virtual void C() { cout << "Base1 C()" << endl; }
+};
+
+class Base2 {
+public:
+	virtual void D() { cout << "Base2 D()" << endl; }
+	virtual void E() { cout << "Base2 E()" << endl; }
+};
+
+class Base3 {
+	virtual void F() { cout << "Base3 F()" << endl; }
+	virtual void G() { cout << "Base3 G()" << endl; }
+};
+
+class Derive : public Base1, public Base2, public Base3{
+public:
+	virtual void A() { cout << "Derive A()" << endl; }           // 覆盖Base1::A()
+	virtual void D() { cout << "Derive D()" << endl; }           // 覆盖Base2::D()
+	virtual void F() { cout << "Derive F()" << endl; }			// 覆盖Base3::F()
+	virtual void MyA() { cout << "Derive MyA()" << endl; }
+};
+
+int main()
+{
+	typedef void (*Func)();
+	Derive d;
+	Base1 &b1 = d;
+	Base2 &b2 = d;
+	cout << "Derive对象所占的内存大小为：" << sizeof(d) << endl;
+	
+	cout << "\n---------第一个虚函数表-------------" << endl;
+	long* tmp1 = (long *)&d;              // 获取第一个虚函数表的指针
+	long* vptr1 = (long*)(*tmp1);         // 获取虚函数表
+
+	Func x1 = (Func)vptr1[0];
+	Func x2 = (Func)vptr1[1];
+	Func x3 = (Func)vptr1[2];
+	Func x4 = (Func)vptr1[3];
+	Func x5 = (Func)vptr1[4];
+	Func x6 = (Func)vptr1[5];
+	x1();x2();x3();x4();x5();x6();
+
+	cout << "\n---------第二个虚函数表-------------" << endl;
+	long* tmp2 = tmp1 + 1;               // 获取第二个虚函数表指针 相当于跳过8个字节
+	long* vptr2 = (long*)(*tmp2);
+
+	Func y1 = (Func)vptr2[0];
+	Func y2 = (Func)vptr2[1];
+	y1(); y2();
+
+	cout << "\n---------第三个虚函数表-------------" << endl;
+	long* tmp3 = tmp1 + 2;               // 获取第三个虚函数表指针 相当于跳过8个字节
+	long* vptr3 = (long*)(*tmp3);
+
+	Func z1 = (Func)vptr3[0];
+	Func z2 = (Func)vptr3[1];
+	z1(); z2();
+	return 0;
+}
+
+Derive对象所占的内存大小为：24
+
+---------第一个虚函数表-------------
+Derive A()
+Base1 B()
+Base1 C()
+Derive D() // 被重写的函数也会被放入第一个虚函数的尾部
+Derive F()
+Derive MyA()
+
+---------第二个虚函数表-------------
+Derive D()
+Base2 E()
+
+---------第三个虚函数表-------------
+Derive F()
+Base3 G()
+````
+
+#### 5. 静态联编和动态联编
+
+> **静态联编：在编译时所进行的这种联编又称静态束定，在编译时就解决了程序中的操作调用与执行该操作代码间的关系。** 
+>
+> **动态联编：编译程序在编译阶段并不能确切知道将要调用的函数，只有在程序运行时才能确定将要调用的函数，为此要确切知道该调用的函数，要求联编工作要在程序运行时进行，这种在程序运行时进行联编工作被称为动态联编。**
+
+````cpp
+#include <iostream>
+using namespace std;
+
+class A{
+public:
+	int x;
+	A(){
+		memset(this, 0, sizeof(x));       // 将this对象中的成员初始化为0
+		cout << "构造函数" << endl;
+	}
+	A(const A& a) {
+		memcpy(this, &a, sizeof(A));      // 直接拷贝内存中的内容
+		cout << "拷贝构造函数" << endl;
+	}
+	virtual void virfunc() {
+		cout << "虚函数func" << endl;
+	}
+	void func() {
+		cout << "func函数" << endl;
+	}
+	virtual ~A() {
+		cout << "析构函数" << endl;
+	}
+};
+
+int main()
+{
+	A *a = new A;
+	// a->virfunc(); 错误 因为找不到正确的虚函数地址
+    cout << *(long *)(&a) << endl;
+    A b;
+    b.virfunc();
+	return 0;
+}
+````
+
+
+
+### 虚函数的一些问题
+
+- **构造函数可以设置为虚的吗？**
+
+  答：不能。因为虚函数的调用是需要通过“虚函数表”来进行的，而虚函数表也需要在对象实例化之后才能够进行调用。在构造对象的过程中，还没有为“虚函数表”分配内存。所以，这个调用也是违背先实例化后调用的准则。
+
+  子类的默认构造函数总要执行的操作：执行基类的代码后调用父类的构造函数。
+
+- **c++虚析构函数**
+
+  如果类是父类，则必须声明为虚析构函数。基类声明一个虚析构函数，为了确保释放派生对象时，按照正确的顺序调用析构函数。
+
+  如果析构函数不是虚的，那么编译器只会调用对应指针类型的虚构函数。切记，是指针类型的，不是指针指向类型的！而其他类的析构函数就不会被调用。例如如下代码：
+
+  ```CPP
+  Employee* pe = new Singer;
+  delete pe;
+  ```
+
+  只会调用Employee的析构函数而不会调用Singer类的析构函数。如果这个类不是父类也可以定义虚析构函数，只是效率方面问题罢了
+
+- **那些函数不能是虚函数？**
+
+  除了上面说的构造和析构函数往外。
+
+  ①**友元函数**不是虚函数，因为友元函数不是类成员，只有类成员才能使虚函数。
+
+  ②**静态成员函数**不能是虚。在C++中，静态成员函数不能被声明为virtual函数。首先会编译失败，也就是不能同过编译。
+
+  原因如下：
+
+  1. static成员不属于任何类对象或类实例，所以即使给此函数加上virtual也是没有任何意义的。
+  2. 静态与非静态成员函数之间有一个主要的区别。那就是静态成员函数没有隐藏的this指针。对于虚函数，它的调用恰恰需要this指针。在有虚函数的类实例中，this指针调用vptr指针，vptr找到vtable(虚函数列表)，通过虚函数列表找到需要调用的虚函数的地址。总体来说虚函数的调用关系是：this指针->vptr->vtable ->virtual虚函数。所以说，static静态函数没有this指针，也就无法找到虚函数了
+
+  ③**内联函数**也不能是虚的，因为要在编译的时候展开，而虚函数要求动态绑定。另外就是虚函数的类对象必须包含vptr，但是内联函数是没有地址的，编译的时候直接展开了所以不行。
+
+  ④**构造函数**也不行。
+
+  ⑤**成员函数模板不能是虚函数**。因为c++ 编译器在解析一个类的时候就要确定虚函数表的大小，如果允许一个虚函数是模板函数，那么compiler就需要在parse这个类之前扫描所有的代码，找出这个模板成员函数的调用（实例化），然后才能确定vtable的大小，而显然这是不可行的，除非改变当前compiler的工作机制。因为类模板中的成员函数在调用的时候才会创建
+
+- **虚函数表是共享还是独有的？**
+
+  答：虚函数表是针对类的，一个类的所有对象的虚函数表都一样。在gcc编译器的实现中虚函数表vtable存放在可执行文件的只读数据段.rodata中。是编译器在编译器为我们处理好的。
+
+- **虚函数表和虚函数指针的位置？**
+
+  答：既不在堆上，也不在栈上。虚函数表（vtable）的表项在编译期已经确定，也就是一组常量函数指针。跟代码一样，在程序编译好的时候就保存在**可执行文件里面**。程序运行前直接加载到内存中即可。而堆和栈都是在运行时分配的。而跟虚函数表对应的，是虚函数表指针（vptr），作为对象的一个（隐藏的）成员，总是跟对象的其他成员一起。如果对象分配在堆上，vptr也跟着在堆上；如果对象分配在栈上，vptr也在栈上……
+
+- **编译器如何处理虚函数表**
+
+  对于派生类来说，编译器简历虚表的过程有三步：
+
+  1. 拷贝基类的虚函数表，如果是多继承，就拷贝每个基类的虚函数表
+  2. 查看派生类中是否有重写基类的虚函数，如果有，就替换成已经重写后的虚函数地址
+  3. 查看派生类中是否有新添加的虚函数，如果有，就加入到自身的虚函数表中
+
+- **构造函数或析构函数中调用虚函数会怎样？**
+
+  首先不应该在构造函数和析构函数中调用虚函数。
+
+  在构造函数中调用虚函数。假如有一个动物基类，这个基类定义了一个虚函数来表示动物的行为，叫做action。我们在基类的构造函数中调用这个虚函数。然后有一个派生类重写了该虚函数。当我们创建一个派生类对象的时候，首先会执行基类部分，因此执行基类的构造函数，然后才会执行子类的构造函数。**编译器在执行基类构造函数中的虚函数时，会认为这是一个基类的对象，因为派生类还并没有构造出来。因此达不到动态绑定的效果，父类构造函数中调用的仍然是父类版本的函数，子类中调用的仍然是子类版本的函数**
+
+  在析构函数中调用虚函数。析构函数也是一样，派生类先进行析构，如果有父类的析构函数中有virtual函数的话，派生类的内容已经被析构了，C++会视其基类，执行基类的virtual函数。
