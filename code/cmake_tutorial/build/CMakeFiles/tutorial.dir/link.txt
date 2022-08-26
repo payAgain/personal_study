@@ -1,0 +1,1 @@
+/usr/bin/c++     CMakeFiles/tutorial.dir/root/study/code/cmake_tutorial/src/tutorial.cpp.o  -o tutorial 
